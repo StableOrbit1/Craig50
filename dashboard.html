@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSVP Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.260.0/lucide.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #F4EBD0; /* Retro Cream */
+        }
+        
+        .status-badge-yes { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+        .status-badge-maybe { background-color: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
+        .status-badge-no { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-10">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-[#4A3B32]">RSVP Dashboard</h1>
+            <a href="index.html" class="flex items-center text-sm font-medium bg-white px-4 py-2 rounded-lg border-2 border-[#4A3B32] shadow-[2px_2px_0px_#4A3B32] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0px_#4A3B32] transition-all text-[#4A3B32]">
+                <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i> Back to Invite
+            </a>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-2xl border-2 border-[#4A3B32] shadow-[4px_4px_0px_#4A3B32]">
+                <p class="text-sm text-gray-500 font-semibold mb-1 uppercase tracking-wider">Total Guests</p>
+                <p id="metric-total" class="text-4xl font-bold text-[#4A3B32]">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border-2 border-[#4A3B32] shadow-[4px_4px_0px_#4A3B32]">
+                <p class="text-sm text-gray-500 font-semibold mb-1 uppercase tracking-wider">Attending</p>
+                <p id="metric-yes" class="text-4xl font-bold text-[#5F712D]">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border-2 border-[#4A3B32] shadow-[4px_4px_0px_#4A3B32]">
+                <p class="text-sm text-gray-500 font-semibold mb-1 uppercase tracking-wider">Maybes</p>
+                <p id="metric-maybe" class="text-4xl font-bold text-[#F0A202]">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border-2 border-[#4A3B32] shadow-[4px_4px_0px_#4A3B32]">
+                <p class="text-sm text-gray-500 font-semibold mb-1 uppercase tracking-wider">Declined</p>
+                <p id="metric-no" class="text-4xl font-bold text-[#D95D39]">-</p>
+            </div>
+        </div>
+
+        <!-- RSVP List -->
+        <div class="bg-white rounded-2xl border-2 border-[#4A3B32] shadow-[4px_4px_0px_#4A3B32] overflow-hidden">
+            <div class="p-6 border-b-2 border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-[#4A3B32]">Guest List</h2>
+                <div id="connection-status" class="flex items-center text-sm font-medium text-amber-600">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Connecting...
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white border-b-2 border-gray-100">
+                            <th class="py-4 px-6 font-semibold text-gray-600 text-sm">Guest Name</th>
+                            <th class="py-4 px-6 font-semibold text-gray-600 text-sm">Status</th>
+                            <th class="py-4 px-6 font-semibold text-gray-600 text-sm">Party Size</th>
+                            <th class="py-4 px-6 font-semibold text-gray-600 text-sm">Time Submitted</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rsvp-list" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="4" class="py-8 text-center text-gray-500">
+                                Waiting for data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9VZJTpe-Rgz31kiaIzLDX2zutEcx5PgU",
+            authDomain: "havok205-9b090.firebaseapp.com",
+            projectId: "havok205-9b090",
+            storageBucket: "havok205-9b090.firebasestorage.app",
+            messagingSenderId: "89324820118",
+            appId: "1:89324820118:web:c2bcf5d923ad299a7b14b7"
+        };
+
+        const metricTotal = document.getElementById('metric-total');
+        const metricYes = document.getElementById('metric-yes');
+        const metricMaybe = document.getElementById('metric-maybe');
+        const metricNo = document.getElementById('metric-no');
+        const rsvpListEl = document.getElementById('rsvp-list');
+        const connectionStatus = document.getElementById('connection-status');
+        
+        let db, auth;
+
+        function updateDashboard(rsvps) {
+            let totalGuests = 0, countYes = 0, countMaybe = 0, countNo = 0;
+            
+            // Clear current list
+            rsvpListEl.innerHTML = '';
+
+            if (rsvps.length === 0) {
+                rsvpListEl.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500 font-medium">No RSVPs yet. Send out your link!</td></tr>`;
+            }
+
+            // Sort by most recent in JavaScript (prevents need for complex firestore index)
+            rsvps.sort((a, b) => b.timestamp - a.timestamp);
+
+            rsvps.forEach(rsvp => {
+                // Tally metrics
+                if (rsvp.status === 'yes') { countYes++; totalGuests += (rsvp.guests || 1); }
+                else if (rsvp.status === 'maybe') { countMaybe++; totalGuests += (rsvp.guests || 0); }
+                else if (rsvp.status === 'no') { countNo++; }
+
+                // Build Row
+                let badgeClass = '';
+                let statusText = '';
+                
+                if (rsvp.status === 'yes') { badgeClass = 'status-badge-yes'; statusText = 'Attending'; }
+                else if (rsvp.status === 'maybe') { badgeClass = 'status-badge-maybe'; statusText = 'Maybe'; }
+                else { badgeClass = 'status-badge-no'; statusText = 'Declined'; }
+
+                const dateStr = rsvp.createdAt ? new Date(rsvp.createdAt.seconds * 1000).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'}) : 'Just now';
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-4 px-6 font-semibold text-[#4A3B32]">${rsvp.name}</td>
+                    <td class="py-4 px-6">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${badgeClass}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 font-medium text-gray-600">${rsvp.status === 'no' ? '-' : rsvp.guests}</td>
+                    <td class="py-4 px-6 text-sm text-gray-500">${dateStr}</td>
+                `;
+                rsvpListEl.appendChild(tr);
+            });
+
+            // Update Metrics UI
+            metricTotal.textContent = totalGuests;
+            metricYes.textContent = countYes;
+            metricMaybe.textContent = countMaybe;
+            metricNo.textContent = countNo;
+        }
+
+        async function initApp() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                await signInAnonymously(auth);
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // Securely listen to the collection
+                        const rsvpsRef = collection(db, 'rsvps');
+                        
+                        onSnapshot(rsvpsRef, (snapshot) => {
+                            const data = [];
+                            snapshot.forEach((doc) => {
+                                const docData = doc.data();
+                                data.push({
+                                    id: doc.id,
+                                    ...docData,
+                                    timestamp: docData.createdAt ? docData.createdAt.seconds : Date.now() / 1000
+                                });
+                            });
+                            
+                            connectionStatus.innerHTML = '<i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-green-500"></i> <span class="text-green-600">Live Updates On</span>';
+                            lucide.createIcons();
+                            
+                            updateDashboard(data);
+
+                        }, (error) => {
+                            console.error("Firestore error:", error);
+                            connectionStatus.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 mr-2 text-red-500"></i> <span class="text-red-600">Permission Denied</span>';
+                            lucide.createIcons();
+                            
+                            rsvpListEl.innerHTML = `
+                                <tr>
+                                    <td colspan="4" class="py-8 px-6 text-center text-red-600">
+                                        <p class="font-bold mb-2">Could not read from database.</p>
+                                        <p class="text-sm">Please ensure your Firebase Firestore Rules are set up correctly.</p>
+                                        <code class="block mt-4 bg-red-50 p-3 rounded text-left text-xs font-mono max-w-lg mx-auto">
+                                            rules_version = '2';<br>
+                                            service cloud.firestore {<br>
+                                            &nbsp;&nbsp;match /databases/{database}/documents {<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;match /{document=**} {<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;allow read, write: if request.auth != null;<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+                                            &nbsp;&nbsp;}<br>
+                                            }
+                                        </code>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                });
+
+            } catch (error) {
+                console.error("Init Error:", error);
+                connectionStatus.innerHTML = '<span class="text-red-600">Connection Failed</span>';
+            }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
