@@ -9,11 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.260.0/lucide.min.js"></script>
     
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #F4EBD0; /* Retro Cream */
-        }
-        
+        body { font-family: 'Poppins', sans-serif; background-color: #F4EBD0; }
         .status-badge-yes { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
         .status-badge-maybe { background-color: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
         .status-badge-no { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
@@ -28,6 +24,17 @@
             <a href="index.html" class="flex items-center text-sm font-medium bg-white px-4 py-2 rounded-lg border-2 border-[#4A3B32] shadow-[2px_2px_0px_#4A3B32] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-[1px_1px_0px_#4A3B32] transition-all text-[#4A3B32]">
                 <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i> Back to Invite
             </a>
+        </div>
+
+        <!-- Debug Error Box (Hidden by default) -->
+        <div id="debug-error-box" class="hidden mb-8 bg-white p-6 rounded-xl border-4 border-red-500 shadow-[8px_8px_0px_rgba(239,68,68,0.3)]">
+            <div class="flex items-start">
+                <i data-lucide="alert-octagon" class="w-8 h-8 text-red-500 mr-4 flex-shrink-0"></i>
+                <div>
+                    <p class="text-xl text-red-600 font-bold mb-1">Dashboard Error</p>
+                    <p id="debug-error-message" class="text-sm text-gray-700 font-mono bg-gray-100 p-2 rounded break-words"></p>
+                </div>
+            </div>
         </div>
 
         <!-- Metrics Cards -->
@@ -54,8 +61,8 @@
         <div class="bg-white rounded-2xl border-2 border-[#4A3B32] shadow-[4px_4px_0px_#4A3B32] overflow-hidden">
             <div class="p-6 border-b-2 border-gray-100 bg-gray-50 flex justify-between items-center">
                 <h2 class="text-lg font-bold text-[#4A3B32]">Guest List</h2>
-                <div id="connection-status" class="flex items-center text-sm font-medium text-amber-600">
-                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Connecting...
+                <div id="connection-status" class="flex items-center text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> <span>Connecting to Firebase...</span>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -70,8 +77,9 @@
                     </thead>
                     <tbody id="rsvp-list" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="4" class="py-8 text-center text-gray-500">
-                                Waiting for data...
+                            <td colspan="4" class="py-10 text-center text-gray-500">
+                                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                                <span id="table-status-text">Waiting for data to load...</span>
                             </td>
                         </tr>
                     </tbody>
@@ -103,119 +111,144 @@
         const metricNo = document.getElementById('metric-no');
         const rsvpListEl = document.getElementById('rsvp-list');
         const connectionStatus = document.getElementById('connection-status');
+        const debugErrorBox = document.getElementById('debug-error-box');
+        const debugErrorMessage = document.getElementById('debug-error-message');
+        const tableStatusText = document.getElementById('table-status-text');
         
         let db, auth;
 
-        function updateDashboard(rsvps) {
-            let totalGuests = 0, countYes = 0, countMaybe = 0, countNo = 0;
-            
-            // Clear current list
-            rsvpListEl.innerHTML = '';
+        function showError(message) {
+            console.error("Dashboard Error:", message);
+            debugErrorMessage.innerHTML = message;
+            debugErrorBox.classList.remove('hidden');
+            connectionStatus.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 mr-2 text-red-500"></i> <span class="text-red-600">Disconnected</span>';
+            connectionStatus.className = "flex items-center text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-200";
+            lucide.createIcons();
+        }
 
-            if (rsvps.length === 0) {
-                rsvpListEl.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500 font-medium">No RSVPs yet. Send out your link!</td></tr>`;
+        function setStatus(message, type = 'loading') {
+            if (type === 'success') {
+                connectionStatus.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-green-500"></i> <span class="text-green-600">${message}</span>`;
+                connectionStatus.className = "flex items-center text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-200";
+            } else {
+                connectionStatus.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> <span>${message}</span>`;
             }
+            lucide.createIcons();
+        }
 
-            // Sort by most recent in JavaScript (prevents need for complex firestore index)
-            rsvps.sort((a, b) => b.timestamp - a.timestamp);
-
-            rsvps.forEach(rsvp => {
-                // Tally metrics
-                if (rsvp.status === 'yes') { countYes++; totalGuests += (rsvp.guests || 1); }
-                else if (rsvp.status === 'maybe') { countMaybe++; totalGuests += (rsvp.guests || 0); }
-                else if (rsvp.status === 'no') { countNo++; }
-
-                // Build Row
-                let badgeClass = '';
-                let statusText = '';
+        function updateDashboard(rsvps) {
+            try {
+                let totalGuests = 0, countYes = 0, countMaybe = 0, countNo = 0;
                 
-                if (rsvp.status === 'yes') { badgeClass = 'status-badge-yes'; statusText = 'Attending'; }
-                else if (rsvp.status === 'maybe') { badgeClass = 'status-badge-maybe'; statusText = 'Maybe'; }
-                else { badgeClass = 'status-badge-no'; statusText = 'Declined'; }
+                rsvpListEl.innerHTML = '';
 
-                const dateStr = rsvp.createdAt ? new Date(rsvp.createdAt.seconds * 1000).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'}) : 'Just now';
+                if (!rsvps || rsvps.length === 0) {
+                    rsvpListEl.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-gray-500 font-medium"><i data-lucide="mail-open" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>Database is empty! No RSVPs yet.</td></tr>`;
+                    lucide.createIcons();
+                    
+                    metricTotal.textContent = "0";
+                    metricYes.textContent = "0";
+                    metricMaybe.textContent = "0";
+                    metricNo.textContent = "0";
+                    return;
+                }
 
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 transition-colors";
-                tr.innerHTML = `
-                    <td class="py-4 px-6 font-semibold text-[#4A3B32]">${rsvp.name}</td>
-                    <td class="py-4 px-6">
-                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${badgeClass}">
-                            ${statusText}
-                        </span>
-                    </td>
-                    <td class="py-4 px-6 font-medium text-gray-600">${rsvp.status === 'no' ? '-' : rsvp.guests}</td>
-                    <td class="py-4 px-6 text-sm text-gray-500">${dateStr}</td>
-                `;
-                rsvpListEl.appendChild(tr);
-            });
+                // Sort safely
+                rsvps.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-            // Update Metrics UI
-            metricTotal.textContent = totalGuests;
-            metricYes.textContent = countYes;
-            metricMaybe.textContent = countMaybe;
-            metricNo.textContent = countNo;
+                rsvps.forEach(rsvp => {
+                    const status = rsvp.status || 'unknown';
+                    const guests = parseInt(rsvp.guests) || 0;
+                    
+                    if (status === 'yes') { countYes++; totalGuests += guests; }
+                    else if (status === 'maybe') { countMaybe++; totalGuests += guests; }
+                    else if (status === 'no') { countNo++; }
+
+                    let badgeClass = '';
+                    let statusText = '';
+                    
+                    if (status === 'yes') { badgeClass = 'status-badge-yes'; statusText = 'Attending'; }
+                    else if (status === 'maybe') { badgeClass = 'status-badge-maybe'; statusText = 'Maybe'; }
+                    else { badgeClass = 'status-badge-no'; statusText = 'Declined'; }
+
+                    // Extremely safe date parsing (handles pending server timestamps)
+                    let dateStr = 'Just now';
+                    if (rsvp.createdAt && typeof rsvp.createdAt.toDate === 'function') {
+                        dateStr = rsvp.createdAt.toDate().toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="py-4 px-6 font-semibold text-[#4A3B32]">${rsvp.name || 'Anonymous'}</td>
+                        <td class="py-4 px-6">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${badgeClass}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6 font-medium text-gray-600">${status === 'no' ? '-' : guests}</td>
+                        <td class="py-4 px-6 text-sm text-gray-500">${dateStr}</td>
+                    `;
+                    rsvpListEl.appendChild(tr);
+                });
+
+                metricTotal.textContent = totalGuests;
+                metricYes.textContent = countYes;
+                metricMaybe.textContent = countMaybe;
+                metricNo.textContent = countNo;
+                
+            } catch (err) {
+                showError("Error formatting table data: " + err.message);
+            }
         }
 
         async function initApp() {
             try {
+                setStatus("Waking up Firebase...");
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
+                setStatus("Authenticating admin...");
                 await signInAnonymously(auth);
                 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // Securely listen to the collection
+                        setStatus("Fetching RSVPs...");
                         const rsvpsRef = collection(db, 'rsvps');
                         
                         onSnapshot(rsvpsRef, (snapshot) => {
-                            const data = [];
-                            snapshot.forEach((doc) => {
-                                const docData = doc.data();
-                                data.push({
-                                    id: doc.id,
-                                    ...docData,
-                                    timestamp: docData.createdAt ? docData.createdAt.seconds : Date.now() / 1000
+                            try {
+                                const data = [];
+                                snapshot.forEach((doc) => {
+                                    const docData = doc.data();
+                                    data.push({
+                                        id: doc.id,
+                                        ...docData,
+                                        // Safe timestamp fallback
+                                        timestamp: docData.createdAt ? docData.createdAt.seconds : Date.now() / 1000
+                                    });
                                 });
-                            });
-                            
-                            connectionStatus.innerHTML = '<i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-green-500"></i> <span class="text-green-600">Live Updates On</span>';
-                            lucide.createIcons();
-                            
-                            updateDashboard(data);
+                                
+                                setStatus("Live Updates On", "success");
+                                updateDashboard(data);
+
+                            } catch (err) {
+                                showError("Data Parse Error: " + err.message);
+                            }
 
                         }, (error) => {
-                            console.error("Firestore error:", error);
-                            connectionStatus.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 mr-2 text-red-500"></i> <span class="text-red-600">Permission Denied</span>';
-                            lucide.createIcons();
-                            
-                            rsvpListEl.innerHTML = `
-                                <tr>
-                                    <td colspan="4" class="py-8 px-6 text-center text-red-600">
-                                        <p class="font-bold mb-2">Could not read from database.</p>
-                                        <p class="text-sm">Please ensure your Firebase Firestore Rules are set up correctly.</p>
-                                        <code class="block mt-4 bg-red-50 p-3 rounded text-left text-xs font-mono max-w-lg mx-auto">
-                                            rules_version = '2';<br>
-                                            service cloud.firestore {<br>
-                                            &nbsp;&nbsp;match /databases/{database}/documents {<br>
-                                            &nbsp;&nbsp;&nbsp;&nbsp;match /{document=**} {<br>
-                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;allow read, write: if request.auth != null;<br>
-                                            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
-                                            &nbsp;&nbsp;}<br>
-                                            }
-                                        </code>
-                                    </td>
-                                </tr>
-                            `;
+                            if (error.code && error.code.includes("permission-denied")) {
+                                showError("<b>Permission Denied!</b><br>Your database rules are blocking the dashboard from reading data. Ensure your rules allow 'read'.");
+                            } else {
+                                showError("Firestore Read Error: " + error.message);
+                            }
                         });
                     }
                 });
 
             } catch (error) {
-                console.error("Init Error:", error);
-                connectionStatus.innerHTML = '<span class="text-red-600">Connection Failed</span>';
+                showError("Initialization Error: " + error.message);
             }
         }
 
