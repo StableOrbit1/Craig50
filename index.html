@@ -45,7 +45,7 @@
 
     <!-- Loading Overlay with Visual Debugger -->
     <div id="loading-overlay" class="fixed inset-0 bg-[var(--retro-cream)] z-50 flex flex-col items-center justify-center text-[var(--retro-brown)] p-6">
-        <i data-lucide="loader-2" class="w-16 h-16 animate-spin mb-6 text-[var(--retro-orange)]"></i>
+        <i id="loading-icon" data-lucide="loader-2" class="w-16 h-16 animate-spin mb-6 text-[var(--retro-orange)]"></i>
         <p class="font-groovy text-3xl mb-2">Getting Things Ready...</p>
         <p id="loading-status" class="text-lg font-medium text-gray-600">Initializing...</p>
         
@@ -148,13 +148,21 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Imports using CDN -->
+    <!-- 
+      CHANGED: We swapped to the stable public version of Firebase (10.12.2) 
+      This ensures GitHub pages can download the script properly! 
+    -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        lucide.createIcons();
+        // Safely initialize icons
+        try {
+            lucide.createIcons();
+        } catch (e) {
+            console.warn("Icons failed to load, proceeding anyway.");
+        }
 
         const firebaseConfig = {
             apiKey: "AIzaSyD9VZJTpe-Rgz31kiaIzLDX2zutEcx5PgU",
@@ -169,6 +177,7 @@
         const loadingStatus = document.getElementById('loading-status');
         const debugErrorBox = document.getElementById('debug-error-box');
         const debugErrorMessage = document.getElementById('debug-error-message');
+        const loadingIcon = document.getElementById('loading-icon');
         const rsvpForm = document.getElementById('rsvp-form');
         const rsvpContainer = document.getElementById('rsvp-container');
         const successMessage = document.getElementById('success-message');
@@ -180,20 +189,20 @@
         let db, auth;
         let currentUser = null;
 
-        // Visual debugger function
         function setStatus(msg) {
             console.log(msg);
-            loadingStatus.textContent = msg;
+            if (loadingStatus) loadingStatus.textContent = msg;
         }
 
         function showDebugError(err) {
             console.error(err);
-            const icon = loadingOverlay.querySelector('i');
-            if (icon) icon.style.display = 'none'; // hide the spinner
-            loadingStatus.textContent = "Something went wrong.";
-            loadingStatus.classList.add('text-red-500');
-            debugErrorMessage.textContent = err.message || err.toString();
-            debugErrorBox.classList.remove('hidden');
+            if (loadingIcon) loadingIcon.style.display = 'none'; 
+            if (loadingStatus) {
+                loadingStatus.textContent = "Something went wrong.";
+                loadingStatus.classList.add('text-red-500');
+            }
+            if (debugErrorMessage) debugErrorMessage.textContent = err.message || err.toString();
+            if (debugErrorBox) debugErrorBox.classList.remove('hidden');
         }
 
         // Form Logic
@@ -247,42 +256,8 @@
             }
         }
 
-        // Form Submission
-        rsvpForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            if (!currentUser) return alert("Not connected to database.");
-
-            const name = document.getElementById('guest-name').value.trim();
-            const guestCountInput = document.getElementById('guest-count').value;
-            const finalGuestCount = (selectedRsvp === 'yes' || selectedRsvp === 'maybe') ? parseInt(guestCountInput, 10) : 0;
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin inline mr-2"></i> Sending...';
-            lucide.createIcons();
-
-            try {
-                const rsvpsRef = collection(db, 'rsvps');
-                await addDoc(rsvpsRef, {
-                    userId: currentUser.uid,
-                    name: name,
-                    status: selectedRsvp,
-                    guests: finalGuestCount,
-                    createdAt: serverTimestamp()
-                });
-
-                rsvpContainer.classList.add('hidden');
-                successMessage.classList.remove('hidden');
-
-            } catch (error) {
-                console.error(error);
-                alert("Error saving: " + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Send RSVP';
-            }
-        });
-
         // Start initialization immediately
+        setStatus("Starting up...");
         initApp();
 
     </script>
