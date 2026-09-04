@@ -43,7 +43,7 @@
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4 font-modern relative pb-12">
 
-    <!-- Loading Overlay with Visual Debugger -->
+    <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-[var(--retro-cream)] z-50 flex flex-col items-center justify-center text-[var(--retro-brown)] p-6">
         <i id="loading-icon" data-lucide="loader-2" class="w-16 h-16 animate-spin mb-6 text-[var(--retro-orange)]"></i>
         <p class="font-groovy text-3xl mb-2">Getting Things Ready...</p>
@@ -108,7 +108,11 @@
 
             <div id="rsvp-container" class="bg-white p-6 rounded-2xl border-2 border-[var(--retro-brown)] relative">
                 <h2 class="font-groovy text-2xl text-center mb-6 text-[var(--retro-brown)]">RSVP</h2>
-                <div id="error-message" class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200"></div>
+                
+                <div id="error-message" class="hidden mb-5 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg text-sm text-red-800 flex items-start shadow-sm">
+                    <i data-lucide="alert-circle" class="w-5 h-5 mr-3 flex-shrink-0 text-red-500"></i>
+                    <div id="error-text" class="flex-1 font-medium"></div>
+                </div>
 
                 <form id="rsvp-form" class="space-y-5">
                     <div>
@@ -148,7 +152,6 @@
     </div>
 
     <!-- SECRET LINK HIDDEN HERE -->
-    <!-- It is completely invisible (opacity-0) until you hover over the very bottom of the page -->
     <a href="dashboard.html" class="absolute bottom-4 opacity-0 hover:opacity-20 transition-opacity text-[var(--retro-brown)] text-xs font-bold px-10 py-2 cursor-pointer z-0">
         Admin Dashboard
     </a>
@@ -158,7 +161,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        try { lucide.createIcons(); } catch (e) { console.warn("Icons failed to load"); }
+        try { lucide.createIcons(); } catch (e) { console.warn("Icons failed to load initially."); }
 
         const firebaseConfig = {
             apiKey: "AIzaSyD9VZJTpe-Rgz31kiaIzLDX2zutEcx5PgU",
@@ -173,13 +176,14 @@
         const loadingStatus = document.getElementById('loading-status');
         const debugErrorBox = document.getElementById('debug-error-box');
         const debugErrorMessage = document.getElementById('debug-error-message');
-        const loadingIcon = document.getElementById('loading-icon');
         const rsvpForm = document.getElementById('rsvp-form');
         const rsvpContainer = document.getElementById('rsvp-container');
         const successMessage = document.getElementById('success-message');
         const submitBtn = document.getElementById('submit-btn');
         const rsvpBtns = document.querySelectorAll('.rsvp-btn');
         const guestsSection = document.getElementById('guests-section');
+        const errorBanner = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
         
         let selectedRsvp = null;
         let db, auth;
@@ -187,11 +191,12 @@
 
         function setStatus(msg) { if (loadingStatus) loadingStatus.textContent = msg; }
 
-        function showDebugError(err) {
-            if (loadingIcon) loadingIcon.style.display = 'none'; 
-            if (loadingStatus) { loadingStatus.textContent = "Something went wrong."; loadingStatus.classList.add('text-red-500'); }
-            if (debugErrorMessage) debugErrorMessage.textContent = err.message || err.toString();
-            if (debugErrorBox) debugErrorBox.classList.remove('hidden');
+        function showFormError(htmlMessage) {
+            errorText.innerHTML = htmlMessage;
+            errorBanner.classList.remove('hidden');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send RSVP';
+            console.error("Form Error Displayed:", htmlMessage);
         }
 
         rsvpBtns.forEach(btn => {
@@ -203,6 +208,7 @@
                 
                 selectedRsvp = clickedBtn.dataset.value;
                 submitBtn.disabled = false;
+                errorBanner.classList.add('hidden');
 
                 if (selectedRsvp === 'yes' || selectedRsvp === 'maybe') {
                     guestsSection.classList.remove('hidden');
@@ -214,11 +220,10 @@
 
         async function initApp() {
             try {
-                setStatus("Step 1: Connecting to Firebase App...");
+                setStatus("Connecting to Firebase...");
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                setStatus("Step 2: Connecting securely...");
                 await signInAnonymously(auth);
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
@@ -229,25 +234,45 @@
                     }
                 });
             } catch (error) {
-                showDebugError(error);
+                console.error(error);
+                loadingStatus.textContent = "Initialization Failed";
+                loadingStatus.classList.add('text-red-500');
+                debugErrorMessage.textContent = error.message;
+                debugErrorBox.classList.remove('hidden');
             }
         }
 
         rsvpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!currentUser) return alert("Not connected to database.");
+            errorBanner.classList.add('hidden');
+
+            if (!currentUser) {
+                showFormError("Database connection lost. Please refresh the page.");
+                return;
+            }
 
             const name = document.getElementById('guest-name').value.trim();
             const guestCountInput = document.getElementById('guest-count').value;
             const finalGuestCount = (selectedRsvp === 'yes' || selectedRsvp === 'maybe') ? parseInt(guestCountInput, 10) : 0;
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin inline mr-2"></i> Sending...';
-            lucide.createIcons();
+            // Using pure inline SVG to prevent script crashes from external icon libraries during submission
+            submitBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg> Sending...`;
 
             try {
                 const rsvpsRef = collection(db, 'rsvps');
-                await addDoc(rsvpsRef, {
+                
+                // Aggressive 4-second timeout
+                let timeoutId;
+                const timeoutError = new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error("TIMEOUT")), 4000);
+                });
+
+                const saveToFirebase = addDoc(rsvpsRef, {
                     userId: currentUser.uid,
                     name: name,
                     status: selectedRsvp,
@@ -255,14 +280,24 @@
                     createdAt: serverTimestamp()
                 });
 
+                // Race the database save against the 4-second clock
+                await Promise.race([saveToFirebase, timeoutError]);
+                clearTimeout(timeoutId); // Cleanup if successful
+
+                // Success!
                 rsvpContainer.classList.add('hidden');
                 successMessage.classList.remove('hidden');
 
             } catch (error) {
-                console.error(error);
-                alert("Error saving: " + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Send RSVP';
+                console.error("Save Error:", error);
+                
+                if (error.message === "TIMEOUT") {
+                    showFormError("<b>Database not found!</b><br>Please go to your Firebase Console &rarr; Firestore Database &rarr; Click <b>'Create Database'</b>.");
+                } else if (error.code && error.code.includes("permission-denied")) {
+                    showFormError("<b>Permission Denied.</b><br>Please update your Firestore Security Rules to allow writing.");
+                } else {
+                    showFormError("<b>Error:</b> " + error.message);
+                }
             }
         });
 
