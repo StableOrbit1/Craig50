@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- 70s style font (Shrikhand) and Modern font (Poppins) -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Shrikhand&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.260.0/lucide.min.js"></script>
     
@@ -31,74 +30,47 @@
             );
         }
 
-        .font-groovy {
-            font-family: 'Shrikhand', cursive;
-        }
-
-        .font-modern {
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .groovy-text-shadow {
-            text-shadow: 3px 3px 0px var(--retro-brown), 6px 6px 0px var(--retro-orange);
-        }
-
-        .retro-card {
-            box-shadow: 8px 8px 0px var(--retro-brown);
-            border: 4px solid var(--retro-brown);
-        }
-
-        .btn-retro {
-            border: 2px solid var(--retro-brown);
-            box-shadow: 4px 4px 0px var(--retro-brown);
-            transition: all 0.1s ease;
-        }
-
-        .btn-retro:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px var(--retro-brown);
-        }
-
-        .btn-retro.selected {
-            background-color: var(--retro-orange);
-            color: white;
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0px var(--retro-brown);
-        }
-        
-        .input-retro {
-            border: 2px solid var(--retro-brown);
-            background-color: #fff;
-        }
-        
-        .input-retro:focus {
-            outline: none;
-            border-color: var(--retro-orange);
-            box-shadow: 0 0 0 3px rgba(217, 93, 57, 0.2);
-        }
+        .font-groovy { font-family: 'Shrikhand', cursive; }
+        .font-modern { font-family: 'Poppins', sans-serif; }
+        .groovy-text-shadow { text-shadow: 3px 3px 0px var(--retro-brown), 6px 6px 0px var(--retro-orange); }
+        .retro-card { box-shadow: 8px 8px 0px var(--retro-brown); border: 4px solid var(--retro-brown); }
+        .btn-retro { border: 2px solid var(--retro-brown); box-shadow: 4px 4px 0px var(--retro-brown); transition: all 0.1s ease; }
+        .btn-retro:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px var(--retro-brown); }
+        .btn-retro.selected { background-color: var(--retro-orange); color: white; transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--retro-brown); }
+        .input-retro { border: 2px solid var(--retro-brown); background-color: #fff; }
+        .input-retro:focus { outline: none; border-color: var(--retro-orange); box-shadow: 0 0 0 3px rgba(217, 93, 57, 0.2); }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 font-modern">
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-white/80 z-50 flex flex-col items-center justify-center font-groovy text-[var(--retro-brown)]">
-        <i data-lucide="loader-2" class="w-12 h-12 animate-spin mb-4"></i>
-        <p class="text-2xl">Getting Things Ready...</p>
+    <!-- Loading Overlay with Visual Debugger -->
+    <div id="loading-overlay" class="fixed inset-0 bg-[var(--retro-cream)] z-50 flex flex-col items-center justify-center text-[var(--retro-brown)] p-6">
+        <i data-lucide="loader-2" class="w-16 h-16 animate-spin mb-6 text-[var(--retro-orange)]"></i>
+        <p class="font-groovy text-3xl mb-2">Getting Things Ready...</p>
+        <p id="loading-status" class="text-lg font-medium text-gray-600">Initializing...</p>
+        
+        <!-- Error Box (Hidden by default) -->
+        <div id="debug-error-box" class="hidden mt-6 bg-white p-6 rounded-xl max-w-md text-center border-4 border-red-500 shadow-[8px_8px_0px_rgba(239,68,68,0.3)]">
+            <p class="text-xl text-red-600 font-bold mb-2">Oops! Connection Failed</p>
+            <p id="debug-error-message" class="text-sm font-modern text-gray-700 mb-4 bg-gray-100 p-3 rounded font-mono text-left break-words"></p>
+            <p class="text-xs text-gray-600 font-semibold border-t pt-3">
+                If the error says <strong>"auth/operation-not-allowed"</strong>:<br>
+                Go to Firebase Console &rarr; Authentication &rarr; Sign-in method &rarr; Enable "Anonymous".
+            </p>
+        </div>
     </div>
 
+    <!-- Main Card -->
     <div class="max-w-xl w-full bg-white rounded-3xl retro-card overflow-hidden">
         
-        <!-- Groovy Header -->
         <div class="bg-[var(--retro-yellow)] p-8 text-center border-b-4 border-[var(--retro-brown)] relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-3 bg-[var(--retro-orange)]"></div>
             <div class="absolute top-3 left-0 w-full h-3 bg-[var(--retro-green)]"></div>
-            
             <h1 class="font-groovy text-4xl md:text-5xl text-white groovy-text-shadow mt-6 mb-2 tracking-wide leading-tight">
                 Older? Yes.<br>Wiser? Perhaps.
             </h1>
         </div>
 
-        <!-- Modern Details -->
         <div class="p-8 md:p-10 bg-[var(--retro-cream)]">
             <div class="space-y-6 text-[var(--retro-brown)] text-center">
                 <div class="flex items-center justify-center space-x-3">
@@ -134,39 +106,29 @@
                 </a>
             </div>
 
-            <!-- RSVP Form -->
             <div id="rsvp-container" class="bg-white p-6 rounded-2xl border-2 border-[var(--retro-brown)] relative">
                 <h2 class="font-groovy text-2xl text-center mb-6 text-[var(--retro-brown)]">RSVP</h2>
                 
-                <div id="error-message" class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">
-                </div>
+                <div id="error-message" class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200"></div>
 
                 <form id="rsvp-form" class="space-y-5">
                     <div>
                         <label class="block text-sm font-semibold mb-2 text-[var(--retro-brown)]" for="guest-name">Your Name</label>
-                        <input type="text" id="guest-name" required placeholder="John Doe" 
-                            class="w-full px-4 py-3 rounded-xl input-retro transition-shadow">
+                        <input type="text" id="guest-name" required placeholder="John Doe" class="w-full px-4 py-3 rounded-xl input-retro transition-shadow">
                     </div>
 
                     <div>
                         <label class="block text-sm font-semibold mb-3 text-[var(--retro-brown)]">Can you make it?</label>
                         <div class="grid grid-cols-3 gap-3">
-                            <button type="button" data-value="yes" class="rsvp-btn btn-retro py-2 px-1 rounded-xl bg-gray-50 text-[var(--retro-brown)] font-semibold text-sm">
-                                Yes
-                            </button>
-                            <button type="button" data-value="maybe" class="rsvp-btn btn-retro py-2 px-1 rounded-xl bg-gray-50 text-[var(--retro-brown)] font-semibold text-sm">
-                                Maybe
-                            </button>
-                            <button type="button" data-value="no" class="rsvp-btn btn-retro py-2 px-1 rounded-xl bg-gray-50 text-[var(--retro-brown)] font-semibold text-sm">
-                                No
-                            </button>
+                            <button type="button" data-value="yes" class="rsvp-btn btn-retro py-2 px-1 rounded-xl bg-gray-50 text-[var(--retro-brown)] font-semibold text-sm">Yes</button>
+                            <button type="button" data-value="maybe" class="rsvp-btn btn-retro py-2 px-1 rounded-xl bg-gray-50 text-[var(--retro-brown)] font-semibold text-sm">Maybe</button>
+                            <button type="button" data-value="no" class="rsvp-btn btn-retro py-2 px-1 rounded-xl bg-gray-50 text-[var(--retro-brown)] font-semibold text-sm">No</button>
                         </div>
                     </div>
 
                     <div id="guests-section" class="hidden transform transition-all duration-300 origin-top">
                         <label class="block text-sm font-semibold mb-2 text-[var(--retro-brown)]" for="guest-count">Total guests (including yourself)</label>
-                        <input type="number" id="guest-count" min="1" max="10" value="1" 
-                            class="w-full px-4 py-3 rounded-xl input-retro transition-shadow">
+                        <input type="number" id="guest-count" min="1" max="10" value="1" class="w-full px-4 py-3 rounded-xl input-retro transition-shadow">
                     </div>
 
                     <button type="submit" id="submit-btn" disabled 
@@ -176,7 +138,6 @@
                 </form>
             </div>
 
-            <!-- Success Message -->
             <div id="success-message" class="hidden text-center py-10">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--retro-green)] text-white mb-4 shadow-[4px_4px_0px_var(--retro-brown)]">
                     <i data-lucide="check" class="w-8 h-8"></i>
@@ -184,7 +145,6 @@
                 <h2 class="font-groovy text-3xl text-[var(--retro-brown)] mb-2">Groovy!</h2>
                 <p class="text-lg text-gray-700">Your RSVP has been saved. See you on the flip side!</p>
             </div>
-
         </div>
     </div>
 
@@ -194,10 +154,8 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Initialize Icons
         lucide.createIcons();
 
-        // Your provided Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyD9VZJTpe-Rgz31kiaIzLDX2zutEcx5PgU",
             authDomain: "havok205-9b090.firebaseapp.com",
@@ -207,21 +165,38 @@
             appId: "1:89324820118:web:c2bcf5d923ad299a7b14b7"
         };
 
-        // UI Elements
         const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingStatus = document.getElementById('loading-status');
+        const debugErrorBox = document.getElementById('debug-error-box');
+        const debugErrorMessage = document.getElementById('debug-error-message');
         const rsvpForm = document.getElementById('rsvp-form');
         const rsvpContainer = document.getElementById('rsvp-container');
         const successMessage = document.getElementById('success-message');
-        const errorBanner = document.getElementById('error-message');
         const submitBtn = document.getElementById('submit-btn');
-        const guestsSection = document.getElementById('guests-section');
         const rsvpBtns = document.querySelectorAll('.rsvp-btn');
+        const guestsSection = document.getElementById('guests-section');
         
         let selectedRsvp = null;
         let db, auth;
         let currentUser = null;
 
-        // UI Logic for Form
+        // Visual debugger function
+        function setStatus(msg) {
+            console.log(msg);
+            loadingStatus.textContent = msg;
+        }
+
+        function showDebugError(err) {
+            console.error(err);
+            const icon = loadingOverlay.querySelector('i');
+            if (icon) icon.style.display = 'none'; // hide the spinner
+            loadingStatus.textContent = "Something went wrong.";
+            loadingStatus.classList.add('text-red-500');
+            debugErrorMessage.textContent = err.message || err.toString();
+            debugErrorBox.classList.remove('hidden');
+        }
+
+        // Form Logic
         rsvpBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 rsvpBtns.forEach(b => {
@@ -244,36 +219,31 @@
             });
         });
 
-        function showError(message) {
-            errorBanner.textContent = message;
-            errorBanner.classList.remove('hidden');
-            setTimeout(() => {
-                errorBanner.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Firebase Initialization and Auth
+        // Initialize App
         async function initApp() {
             try {
+                setStatus("Step 1: Connecting to Firebase App...");
                 const app = initializeApp(firebaseConfig);
+                
+                setStatus("Step 2: Connecting to Database...");
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Sign in anonymously to allow writing without a login screen
+                setStatus("Step 3: Generating secure guest token...");
                 await signInAnonymously(auth);
 
+                setStatus("Step 4: Waiting for token confirmation...");
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         currentUser = user;
-                        loadingOverlay.style.display = 'none';
+                        loadingOverlay.style.display = 'none'; // Success! Remove overlay.
                     } else {
                         currentUser = null;
                     }
                 });
 
             } catch (error) {
-                console.error("Initialization error:", error);
-                loadingOverlay.innerHTML = '<p class="text-xl text-red-500 bg-white p-4 rounded-xl">Error connecting to database. Check console.</p>';
+                showDebugError(error);
             }
         }
 
@@ -281,10 +251,7 @@
         rsvpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!currentUser) {
-                showError("You must be connected to submit an RSVP.");
-                return;
-            }
+            if (!currentUser) return alert("Not connected to database.");
 
             const name = document.getElementById('guest-name').value.trim();
             const guestCountInput = document.getElementById('guest-count').value;
@@ -295,9 +262,7 @@
             lucide.createIcons();
 
             try {
-                // Save directly to the 'rsvps' collection in your havok205-9b090 database
                 const rsvpsRef = collection(db, 'rsvps');
-                
                 await addDoc(rsvpsRef, {
                     userId: currentUser.uid,
                     name: name,
@@ -310,13 +275,14 @@
                 successMessage.classList.remove('hidden');
 
             } catch (error) {
-                console.error("Error saving RSVP:", error);
-                showError("Uh oh, something went wrong saving your RSVP. Ensure Firestore rules allow writing.");
+                console.error(error);
+                alert("Error saving: " + error.message);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Send RSVP';
             }
         });
 
+        // Start initialization immediately
         initApp();
 
     </script>
